@@ -170,26 +170,14 @@ dependencies:
     sensu_server_api_user: "{{ monitoring_api_user }}"
     sensu_server_api_password: "{{ monitoring_api_password }}"
 
-    sensu_checks: {}
-    sensu_handlers: {} #
+    sensu_checks: "{{ monitoring_server_checks }}"
+    sensu_handlers: "{{ monitoring_server_handlers }}"
 
-    sensu_settings:
-      relay:
-        graphite:
-          host: localhost #TODO: this is going to cause trouble if\when we separate metrics-server and monitoring
-          port: 2003
+    sensu_settings: "{{ monitoring_server_settings }}"
 
   - role: monitoring-client
     tags: monitoring-client
     monitoring_hostname: "localhost"
-    standalone_checks:
-      test_check:
-        handler   : default
-        command   : "/bin/bash -c 'echo Hello World'"
-        interval  : 60
-        standalone: true
+    standalone_checks: "{{ monitoring_client_standalone_checks }}"
     system_profile: true
-    client_settings:
-      system_profile:
-        interval: 10
-        handler: 'relay'
+    client_settings: "{{ monitoring_client_settings }}"

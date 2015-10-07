@@ -16,3 +16,21 @@ monitoring_dashboard_password: ""
 monitoring_api_user: sensu
 monitoring_api_password: "sensu"
 
+monitoring_client_standalone_checks:
+  test_check:
+    handler   : default
+    command   : "/bin/bash -c 'echo Hello World'"
+    interval  : 60
+    standalone: true
+monitoring_client_settings:
+  system_profile:
+    interval: 10
+    handler: 'relay'
+
+monitoring_server_settings:
+  relay:
+    graphite:
+      host: localhost #TODO: this is going to cause trouble if\when we separate metrics-server and monitoring
+      port: 2003
+monitoring_server_handlers: {}
+monitoring_server_checks: {}
