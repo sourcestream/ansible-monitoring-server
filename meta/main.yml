@@ -1,0 +1,195 @@
+---
+galaxy_info:
+  author: Aleksandr Saraikin
+  description:
+  company: Sourcestream GmbH
+  # If the issue tracker for your role is not on github, uncomment the
+  # next line and provide a value
+  # issue_tracker_url: http://example.com/issue/tracker
+  # Some suggested licenses:
+  # - BSD (default)
+  # - MIT
+  # - GPLv2
+  # - GPLv3
+  # - Apache
+  # - CC-BY
+  license: MIT
+  min_ansible_version: 1.2
+  #
+  # Below are all platforms currently available. Just uncomment
+  # the ones that apply to your role. If you don't see your
+  # platform on this list, let us know and we'll get it added!
+  #
+  platforms:
+  #- name: EL
+  #  versions:
+  #  - all
+  #  - 5
+  #  - 6
+  #  - 7
+  #- name: GenericUNIX
+  #  versions:
+  #  - all
+  #  - any
+  #- name: Fedora
+  #  versions:
+  #  - all
+  #  - 16
+  #  - 17
+  #  - 18
+  #  - 19
+  #  - 20
+  #  - 21
+  #  - 22
+  #- name: Windows
+  #  versions:
+  #  - all
+  #  - 2012R2
+  #- name: SmartOS
+  #  versions:
+  #  - all
+  #  - any
+  #- name: opensuse
+  #  versions:
+  #  - all
+  #  - 12.1
+  #  - 12.2
+  #  - 12.3
+  #  - 13.1
+  #  - 13.2
+  #- name: Amazon
+  #  versions:
+  #  - all
+  #  - 2013.03
+  #  - 2013.09
+  #- name: GenericBSD
+  #  versions:
+  #  - all
+  #  - any
+  #- name: FreeBSD
+  #  versions:
+  #  - all
+  #  - 8.0
+  #  - 8.1
+  #  - 8.2
+  #  - 8.3
+  #  - 8.4
+  #  - 9.0
+  #  - 9.1
+  #  - 9.1
+  #  - 9.2
+  - name: Ubuntu
+    versions:
+  #  - all
+  #  - lucid
+  #  - maverick
+  #  - natty
+  #  - oneiric
+  #  - precise
+  #  - quantal
+  #  - raring
+  #  - saucy
+    - trusty
+  #  - utopic
+  #  - vivid
+  #- name: SLES
+  #  versions:
+  #  - all
+  #  - 10SP3
+  #  - 10SP4
+  #  - 11
+  #  - 11SP1
+  #  - 11SP2
+  #  - 11SP3
+  #- name: GenericLinux
+  #  versions:
+  #  - all
+  #  - any
+  #- name: Debian
+  #  versions:
+  #  - all
+  #  - etch
+  #  - jessie
+  #  - lenny
+  #  - squeeze
+  #  - wheezy
+  #
+  # Below are all categories currently available. Just as with
+  # the platforms above, uncomment those that apply to your role.
+  #
+  categories:
+  #- cloud
+  #- cloud:ec2
+  #- cloud:gce
+  #- cloud:rax
+  #- clustering
+  #- database
+  #- database:nosql
+  #- database:sql
+  #- development
+  - monitoring
+  #- networking
+  #- packaging
+  - system
+  #- web
+allow_duplicates: yes
+dependencies:
+  - role: DavidWittman.redis
+    tags: [redis, sensu-server]
+    redis_bind: localhost
+
+  - role: Mayeu.RabbitMQ
+    tags: [rabbitmq, sensu-server]
+    rabbitmq_conf_tcp_listeners_address: '0.0.0.0' # sensu-clients will connect there
+    rabbitmq_ssl: false
+    rabbitmq_conf_tcp_listeners_port: "{{ monitoring_rabbitmq_port }}" #default port in Mayeu.sensu
+    rabbitmq_vhost_definitions:
+      - name: "{{ monitoring_rabbitmq_vhost }}"
+    rabbitmq_users_definitions:
+      - vhost:    "{{ monitoring_rabbitmq_vhost }}"
+        user:     "{{ monitoring_rabbitmq_user }}"
+        password: "{{ monitoring_rabbitmq_password }}"
+        tags: ["administrator"]
+    rabbitmq_plugins: ['rabbitmq_management']
+
+  - role: Mayeu.sensu
+    tags: [sensu, sensu-server]
+    sensu_install_client: false #uchiwa and server are installed by default
+
+    sensu_server_rabbitmq_hostname: "127.0.0.1" #we're installing both roles to the same machine here, so it's hardcoded
+    sensu_server_rabbitmq_port:     "{{ monitoring_rabbitmq_port }}"
+    sensu_server_rabbitmq_insecure: true
+    sensu_server_rabbitmq_vhost:    "{{ monitoring_rabbitmq_vhost }}"
+    sensu_server_rabbitmq_user:     "{{ monitoring_rabbitmq_user }}"
+    sensu_server_rabbitmq_password: "{{ monitoring_rabbitmq_password }}"
+
+    sensu_server_dashboard_port: "{{ monitoring_dashboard_port }}"
+    sensu_server_dashboard_user: "{{ monitoring_dashboard_user }}"
+    sensu_server_dashboard_password: "{{ monitoring_dashboard_password }}"
+
+    sensu_server_api_user: "{{ monitoring_api_user }}"
+    sensu_server_api_password: "{{ monitoring_api_password }}"
+
+    sensu_checks: {}
+    sensu_handlers: {} #
+
+    sensu_settings:
+      relay:
+        graphite:
+          host: localhost #TODO: this is going to cause trouble if\when we separate metrics-server and monitoring
+          port: 2003
+
+  - role: monitoring-client
+    tags: monitoring-client
+    monitoring_hostname: "localhost"
+    standalone_checks:
+      test_check:
+        handler   : default
+        command   : "/bin/bash -c 'echo Hello World'"
+        interval  : 60
+        standalone: true
+    system_profile: true
+    client_settings:
+      system_profile:
+        interval: 10
+        handler: 'relay'
